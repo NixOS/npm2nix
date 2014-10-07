@@ -46,6 +46,13 @@ escapeNixString = (string) ->
 fullNames = {}
 packageSet = {}
 
+includeOptional = switch args.include_optional
+  when undefined then -> false
+  when '*' then -> true
+  else
+    includeOptionalNames = args.include_optional.split(',')
+    (name) -> includeOptionalNames.indexOf(name) != -1
+
 writePkg = finalizePkgs = undefined
 do ->
   index = 0
@@ -131,14 +138,17 @@ do ->
           stream.write "(self.nativeDeps.\"#{escapeNixString names[idx]}\" or [])"
         stream.write ";\n    deps = {"
         seenDeps = {}
+        addDep = (nm, spc) ->
+          unless seenDeps[nm]
+            spc = spc.version if spc instanceof Object
+            if spc is 'latest' or spc is ''
+              spc = '*'
+            stream.write "\n      \"#{escapeNixString nm}-#{packageSet[nm][spc].version}\" = self.by-version.\"#{escapeNixString nm}\".\"#{packageSet[nm][spc].version}\";"
+          seenDeps[nm] = true
+
         for idx in [0..count]
-          for nm, spc of pkg.scc[idx].dependencies or {}
-            unless seenDeps[nm]
-              spc = spc.version if spc instanceof Object
-              if spc is 'latest' or spc is ''
-                spc = '*'
-              stream.write "\n      \"#{escapeNixString nm}-#{packageSet[nm][spc].version}\" = self.by-version.\"#{escapeNixString nm}\".\"#{packageSet[nm][spc].version}\";"
-            seenDeps[nm] = true
+          addDep nm, spec for nm, spc of pkg.scc[idx].dependencies or {}
+          addDep nm, spec for nm, spc of pkg.scc[idx].optionalDependencies or {} when includeOptional(nm)
         stream.write "\n    };\n    peerDependencies = ["
         for idx in [0..count]
           for nm, spc of pkg.scc[idx].peerDependencies or {}
@@ -163,12 +173,6 @@ npmconf.load (err, conf) ->
     console.error "Error loading npm config: #{err}"
     process.exit 7
   registry = new RegistryClient conf
-  includeOptional = switch args.include_optional
-    when undefined then -> false
-    when '*' then -> true
-    else
-      includeOptionalNames = args.include_optional.split(',')
-      (name) -> includeOptionalNames.indexOf(name) != -1
   fetcher = new PackageFetcher(includeOptional:includeOptional)
   fs.readFile args.packageList, (err, json) ->
     if err?
