@@ -34,6 +34,10 @@ parser.addArgument [ '--overwrite' ],
   help: 'Whether to overwrite the helper default.nix expression (when generating for a package.json)',
   action: 'storeTrue',
 
+parser.addArgument [ '--include-optional' ],
+  help: 'Include optional dependencies that appear in PACKAGES (a comma-separated list of package names, or "*")'
+  metavar: 'PACKAGES'
+
 args = parser.parseArgs()
 
 escapeNixString = (string) ->
@@ -159,7 +163,13 @@ npmconf.load (err, conf) ->
     console.error "Error loading npm config: #{err}"
     process.exit 7
   registry = new RegistryClient conf
-  fetcher = new PackageFetcher()
+  includeOptional = switch args.include_optional
+    when undefined then -> false
+    when '*' then -> true
+    else
+      includeOptionalNames = args.include_optional.split(',')
+      (name) -> includeOptionalNames.indexOf(name) != -1
+  fetcher = new PackageFetcher(includeOptional:includeOptional)
   fs.readFile args.packageList, (err, json) ->
     if err?
       console.error "Error reading file #{args.packageList}: #{err}"
