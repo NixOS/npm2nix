@@ -47,7 +47,7 @@ fullNames = {}
 packageSet = {}
 
 includeOptional = switch args.include_optional
-  when undefined then -> false
+  when null then -> false
   when '*' then -> true
   else
     includeOptionalNames = args.include_optional.split(',')
