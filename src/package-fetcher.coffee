@@ -281,27 +281,6 @@ do ->
                       cached.callbacks = []
 
                     gitDir = "#{dirPath}/#{files[0]}"
-                    gitRevParse = child_process.spawn "git", [ "rev-parse", commitIsh ], cwd: gitDir, stdio: [ 0, 'pipe', 2 ]
-                    gitRevParse.on 'error', (err) -> error "Error executing git rev-parse: #{err}"
-                    gitRevParse.on 'exit', (code, signal) =>
-                      unless code?
-                        error "git rev-parse died with signal #{signal}"
-                      else unless code is 0
-                        error "git rev-parse exited with non-zero status code #{code}"
-                    gitRevParse.stdout.setEncoding "utf8"
-                    readRev = ->
-                      rev = gitRevParse.stdout.read 40
-                      if rev?
-                        gitRevParse.stdout.removeListener 'readable', readRev
-                        gitRevParse.stdout.removeListener 'end', earlyRevEnd
-                        gitRevParse.stdout.on 'data', ->
-                        finished() if pkg? and hash?
-                    gitRevParse.stdout.on 'readable', readRev
-                    readRev()
-                    earlyRevEnd = ->
-                      error "git rev-parse's stdout ended before 64 characters were read"
-                    gitRevParse.stdout.on 'end', earlyRevEnd
-
                     gitCheckout = child_process.spawn "git", [ "checkout", commitIsh ], cwd: gitDir, stdio: "inherit"
                     gitCheckout.on 'error', (err) -> error "Error executing git checkout: #{err}"
                     gitCheckout.on 'exit', (code, signal) =>
@@ -310,6 +289,28 @@ do ->
                       else unless code is 0
                         error "git checkout exited with non-zero status code #{code}"
                       else
+
+                        gitRevParse = child_process.spawn "git", [ "rev-parse", commitIsh ], cwd: gitDir, stdio: [ 0, 'pipe', 2 ]
+                        gitRevParse.on 'error', (err) -> error "Error executing git rev-parse: #{err}"
+                        gitRevParse.on 'exit', (code, signal) =>
+                          unless code?
+                            error "git rev-parse died with signal #{signal}"
+                          else unless code is 0
+                            error "git rev-parse exited with non-zero status code #{code}"
+                        gitRevParse.stdout.setEncoding "utf8"
+                        readRev = ->
+                          rev = gitRevParse.stdout.read 40
+                          if rev?
+                            gitRevParse.stdout.removeListener 'readable', readRev
+                            gitRevParse.stdout.removeListener 'end', earlyRevEnd
+                            gitRevParse.stdout.on 'data', ->
+                            finished() if pkg? and hash?
+                        gitRevParse.stdout.on 'readable', readRev
+                        readRev()
+                        earlyRevEnd = ->
+                          error "git rev-parse's stdout ended before 64 characters were read"
+                        gitRevParse.stdout.on 'end', earlyRevEnd
+
                         fs.readFile "#{gitDir}/package.json", encoding: "utf8", (err, data) =>
                           if err?
                             error "Error reading package.json in #{parsed.format()}##{commitIsh} clone: #{err}"
