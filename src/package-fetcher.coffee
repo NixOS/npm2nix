@@ -255,7 +255,7 @@ do ->
           error = (err) ->
             fs.rmrf dirPath, ->
             oldError err
-          gitClone = child_process.spawn "git", [ "clone", parsed.format() ], cwd: dirPath, stdio: "inherit"
+          gitClone = child_process.spawn "git", [ "clone", "--recursive", parsed.format() ], cwd: dirPath, stdio: "inherit"
           gitClone.on 'error', (err) -> error "Error executing git clone: #{err}"
           gitClone.on 'exit', (code, signal) =>
             unless code?
