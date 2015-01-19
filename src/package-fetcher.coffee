@@ -23,6 +23,7 @@ PackageFetcher = (cfg) ->
     new PackageFetcher cfg
   else
     events.EventEmitter.call this
+    @_cfg = cfg
     @_peerDependencies = {}
     this
 
@@ -444,6 +445,9 @@ do ->
       handleDep nm, dep
     for nm, dep of pkg.peerDependencies or {}
       handleDep nm, dep
+    for nm, dep of pkg.optionalDependencies or {}
+      if @_cfg.includeOptional nm
+        handleDep nm, dep
 
     handlePeerDependencies = (peerDependencies) =>
       peerDeps = {}
