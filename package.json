@@ -1,6 +1,6 @@
 {
   "name": "npm2nix",
-  "version": "5.10.0",
+  "version": "5.10.1",
   "description": "Generate nix expressions to build npm packages",
   "homepage": "https://github.com/NixOS/npm2nix",
   "author": {
