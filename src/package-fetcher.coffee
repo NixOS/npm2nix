@@ -419,7 +419,6 @@ do ->
   PackageFetcher.prototype._handleDeps = (pkg, registry) ->
     # !!! TODO: Handle optionalDependencies, peerDependencies
     registry = makeNewRegistry registry, pkg.registry if 'registry' of pkg
-    pkg.needsPatch = false
     handleDep = (nm, dep) =>
       # !!! Seeming conflict between CommonJS Registry spec and npm on the one
       # hand and CommonJS Package spec on the other. Package spec allows deps
@@ -431,14 +430,9 @@ do ->
       if dep instanceof Object
         thisRegistry = makeNewRegistry registry, dep.registry
         dep = dep.version
-      if dep is 'latest'
-        pkg.needsPatch = true
-        dep = '*'
-      if dep is ''
+      if dep is 'latest' or dep is ''
         dep = '*'
       parsed = url.parse dep
-      if parsed.protocol in [ 'git:', 'git+ssh:', 'git+http:', 'git+https:', 'http:', 'https:' ]
-        pkg.needsPatch = true
       @fetch nm, dep, thisRegistry
     for nm, dep of pkg.dependencies or {}
       handleDep nm, dep
@@ -450,10 +444,7 @@ do ->
       for nm, dep of peerDependencies
         if dep instanceof Object
           dep = dep.version
-        if dep is 'latest'
-          dep = '*'
-          pkg.needsPatch = true
-        if dep is ''
+        if dep is 'latest' or dep is ''
           dep = '*'
         if nm of pkg.dependencies
           merged = tryMergeDeps dep, pkg.dependencies[nm]

@@ -44,30 +44,6 @@ packageSet = {}
 
 writePkg = finalizePkgs = undefined
 do ->
-  index = 0
-  stack = []
-  strongConnect = (pkg) ->
-    pkg.tarjanIndex = index
-    pkg.tarjanLowLink = index
-    index += 1
-    stackIndex = stack.length
-    stack.push pkg
-
-    peerDeps = pkg.peerDependencies or {}
-    for name, spec of peerDeps
-      otherPkg = packageSet[name][spec]
-
-      unless 'tarjanIndex' of otherPkg
-        strongConnect otherPkg
-        pkg.tarjanLowLink = otherPkg.tarjanLowLink if otherPkg.tarjanLowLink < pkg.tarjanLowLink
-      else
-        if otherPkg in stack
-          pkg.tarjanLowLink = otherPkg.tarjanIndex if otherPkg.tarjanIndex < pkg.tarjanLowLink
-
-    if pkg.tarjanLowLink is pkg.tarjanIndex
-      pkg.scc = stack[stackIndex..]
-      stack = stack[...stackIndex]
-
 
   known = {}
 
@@ -81,70 +57,49 @@ do ->
     unless name of known and pkg.version of known[name]
       known[name] ?= {}
       known[name][pkg.version] = true
-      unless 'tarjanIndex' of pkg
-        strongConnect pkg
-      if 'scc' of pkg
-        names = [ ]
-        count = -1
-        cycleDeps = {}
-        for pk in pkg.scc
-          unless name of known and pk.version of known[name]
-            stream.write """
-            \n  by-version."#{escapeNixString pk.name}"."#{escapeNixString pk.version}" = self.by-version."#{escapeNixString name}"."#{escapeNixString pkg.version}";
-            """
-            known[pk.name] ?= {}
-            known[pk.name][pk.version] = true
-          names.push pk.name
-          cycleDeps[pk.name] = true
-          count += 1
+      cycleDeps = {}
+      cycleDeps[pk.name] = true
 
-        stream.write "\n  by-version.\"#{escapeNixString name}\".\"#{escapeNixString pkg.version}\" = lib.makeOverridable self.buildNodePackage {"
-        stream.write "\n    name = \"#{escapeNixString names[0]}-#{escapeNixString pkg.scc[0].version}\";"
-        stream.write "\n    bin = #{if "bin" of pkg then "true" else "false"};"
-        stream.write "\n    src = ["
-        for idx in [0..count]
-          pk = pkg.scc[idx]
-          if 'tarball' of pk.dist
-            stream.write """
-            \n      (#{if pk.needsPatch then 'self.patchSource fetchurl' else 'fetchurl'} {
-                    url = "#{pk.dist.tarball}";
-                    name = "#{pk.name}-#{pk.version}.tgz";
-                    #{if 'shasum' of pk.dist then 'sha1' else 'sha256'} = "#{pk.dist.shasum ? pk.dist.sha256sum}";
-                  })
-            """
-          else
-            stream.write """
-            \n      (#{if pk.needsPatch then 'self.patchSource fetchgit' else 'fetchgit'} {
-                    url = "#{pk.dist.git}";
-                    rev = "#{pk.dist.rev}";
-                    sha256 = "#{pk.dist.sha256sum}";
-                  })
-            """
-        stream.write "\n    ];\n    buildInputs ="
-        for idx in [0..count]
-          stream.write "\n      "
-          stream.write "++ " unless idx is 0
-          stream.write "(self.nativeDeps.\"#{escapeNixString names[idx]}\" or [])"
-        stream.write ";\n    deps = {"
-        seenDeps = {}
-        for idx in [0..count]
-          for nm, spc of pkg.scc[idx].dependencies or {}
-            unless seenDeps[nm]
-              spc = spc.version if spc instanceof Object
-              if spc is 'latest' or spc is ''
-                spc = '*'
-              stream.write "\n      \"#{escapeNixString nm}-#{packageSet[nm][spc].version}\" = self.by-version.\"#{escapeNixString nm}\".\"#{packageSet[nm][spc].version}\";"
-            seenDeps[nm] = true
-        stream.write "\n    };\n    peerDependencies = ["
-        for idx in [0..count]
-          for nm, spc of pkg.scc[idx].peerDependencies or {}
-            unless seenDeps[nm] or cycleDeps[nm]
-              spc = spc.version if spc instanceof Object
-              if spc is 'latest' or spc is ''
-                spc = '*'
-              stream.write "\n      self.by-version.\"#{escapeNixString nm}\".\"#{packageSet[nm][spc].version}\""
-            seenDeps[nm] = true
-        stream.write "\n    ];\n    passthru.names = [ #{("\"#{escapeNixString nm}\"" for nm in names).join " "} ];\n  };"
+      stream.write "\n  by-version.\"#{escapeNixString pkg.name}\".\"#{escapeNixString pkg.version}\" = self.buildNodePackage {"
+      stream.write "\n    name = \"#{escapeNixString pkg.name}-#{escapeNixString pkg.version}\";"
+      stream.write "\n    bin = #{if "bin" of pkg then "true" else "false"};"
+
+      stream.write "\n    src = "
+      if 'tarball' of pkg.dist
+        stream.write """
+        fetchurl {
+              url = "#{pkg.dist.tarball}";
+              name = "#{pkg.name}-#{pkg.version}.tgz";
+              #{if 'shasum' of pkg.dist then 'sha1' else 'sha256'} = "#{pkg.dist.shasum ? pkg.dist.sha256sum}";
+            }
+        """
+      else
+        stream.write """
+        fetchgit {
+              url = "#{pkg.dist.git}";
+              rev = "#{pkg.dist.rev}";
+              sha256 = "#{pkg.dist.sha256sum}";
+            }
+        """
+
+      stream.write ";\n    deps = {"
+      seenDeps = {}
+      for nm, spc of pkg.dependencies or {}
+        unless seenDeps[nm]
+          spc = spc.version if spc instanceof Object
+          if spc is 'latest' or spc is ''
+            spc = '*'
+          stream.write "\n      \"#{escapeNixString nm}-#{packageSet[nm][spc].version}\" = self.by-version.\"#{escapeNixString nm}\".\"#{packageSet[nm][spc].version}\";"
+        seenDeps[nm] = true
+      stream.write "\n    };\n    peerDependencies = ["
+      for nm, spc of pkg.peerDependencies or {}
+        unless seenDeps[nm] or cycleDeps[nm]
+          spc = spc.version if spc instanceof Object
+          if spc is 'latest' or spc is ''
+            spc = '*'
+          stream.write "\n      self.by-version.\"#{escapeNixString nm}\".\"#{packageSet[nm][spc].version}\""
+        seenDeps[nm] = true
+      stream.write "];\n  };"
 
     if fullNames[name] is spec
       stream.write """
@@ -236,7 +191,6 @@ npmconf.load (err, conf) ->
               ("nodePackages.by-spec.\"#{escapeNixString nm}\".\"#{escapeNixString spc}\"" for nm, spc of (packages.dependencies ? {})).join ' '
             } ];
             peerDependencies = [];
-            passthru.names = [ "#{pkgName}" ];
           };
         }
         """, flag: "w#{if args.overwrite then '' else 'x'}", (err) ->
