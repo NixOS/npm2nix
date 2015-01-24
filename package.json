@@ -19,10 +19,10 @@
     "tar": "0.1.17",
     "temp": "0.6.0",
     "fs.extra": ">=1.2.0 <2.0.0",
-    "findit": ">=1.1.0 <2.0.0"
+    "findit": ">=1.1.0 <2.0.0",
+    "coffee-script": ">=1.6.2 <2.0.0"
   },
   "devDependencies": {
-    "coffee-script": ">=1.6.2 <2.0.0",
     "grunt": "^0.4.5",
     "grunt-contrib-coffee": "^0.12.0",
     "grunt-contrib-watch": "^0.6.1",
