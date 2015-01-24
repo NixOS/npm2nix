@@ -58,7 +58,7 @@ do ->
       known[name] ?= {}
       known[name][pkg.version] = true
       cycleDeps = {}
-      cycleDeps[pk.name] = true
+      cycleDeps[pkg.name] = true
 
       stream.write "\n  by-version.\"#{escapeNixString pkg.name}\".\"#{escapeNixString pkg.version}\" = self.buildNodePackage {"
       stream.write "\n    name = \"#{escapeNixString pkg.name}-#{escapeNixString pkg.version}\";"
