@@ -27,4 +27,6 @@ Development
 Release
 -------
 
-`grunt release:patch/minor/major`
+- `export GITHUB_USERNAME=<your_github_username>`
+- `export GITHUB_PASSWORD=<your_github_password>`
+- `grunt release:patch/minor/major`

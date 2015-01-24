@@ -16,6 +16,10 @@ module.exports = (grunt) ->
     release:
       options:
         npm: false
+        github:
+          repo: 'NixOS/npm2nix'
+          usernameVar: 'GITHUB_USERNAME'
+          passwordVar: 'GITHUB_PASSWORD'
 
   # These plugins provide necessary tasks.
   grunt.loadNpmTasks 'grunt-contrib-coffee'
