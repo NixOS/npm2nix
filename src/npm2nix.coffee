@@ -103,7 +103,7 @@ do ->
 
     if fullNames[name] is spec
       stream.write """
-      \n  "#{escapeNixString name}" = self.by-version."#{escapeNixString name}"."#{pkg.version}";
+      \n  "#{escapeNixString name}" = self.by-version."#{escapeNixString pkg.name}"."#{pkg.version}";
       """
 
   finalizePkgs = ->
