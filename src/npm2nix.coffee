@@ -62,9 +62,11 @@ do ->
 
       stream.write "\n  by-version.\"#{escapeNixString pkg.name}\".\"#{escapeNixString pkg.version}\" = self.buildNodePackage {"
       stream.write "\n    name = \"#{escapeNixString pkg.name}-#{escapeNixString pkg.version}\";"
+      stream.write "\n    version = \"#{escapeNixString pkg.version}\";"
       stream.write "\n    bin = #{if "bin" of pkg then "true" else "false"};"
 
       stream.write "\n    src = "
+
       if 'tarball' of pkg.dist
         stream.write """
         fetchurl {
@@ -82,15 +84,26 @@ do ->
             }
         """
 
-      stream.write ";\n    deps = {"
       seenDeps = {}
+
+      stream.write ";\n    deps = {"
       for nm, spc of pkg.dependencies or {}
+        unless seenDeps[nm] or nm of (pkg.optionalDependencies or {})
+          spc = spc.version if spc instanceof Object
+          if spc is 'latest' or spc is ''
+            spc = '*'
+          stream.write "\n      \"#{escapeNixString nm}-#{packageSet[nm][spc].version}\" = self.by-version.\"#{escapeNixString nm}\".\"#{packageSet[nm][spc].version}\";"
+          seenDeps[nm] = true
+
+      stream.write "\n    };\n    optionalDependencies = {"
+      for nm, spc of pkg.optionalDependencies or {}
         unless seenDeps[nm]
           spc = spc.version if spc instanceof Object
           if spc is 'latest' or spc is ''
             spc = '*'
           stream.write "\n      \"#{escapeNixString nm}-#{packageSet[nm][spc].version}\" = self.by-version.\"#{escapeNixString nm}\".\"#{packageSet[nm][spc].version}\";"
         seenDeps[nm] = true
+
       stream.write "\n    };\n    peerDependencies = ["
       for nm, spc of pkg.peerDependencies or {}
         unless seenDeps[nm] or cycleDeps[nm]
@@ -99,7 +112,19 @@ do ->
             spc = '*'
           stream.write "\n      self.by-version.\"#{escapeNixString nm}\".\"#{packageSet[nm][spc].version}\""
         seenDeps[nm] = true
-      stream.write "];\n  };"
+      stream.write "];\n"
+
+      stream.write "    os = ["
+      for os, i in pkg.os or []
+        stream.write " \"#{os}\""
+      stream.write " ];\n"
+
+      stream.write "    cpu = ["
+      for cpu, i in pkg.cpu or []
+        stream.write " \"#{cpu}\""
+      stream.write " ];\n"
+
+      stream.write "  };"
 
     if fullNames[name] is spec
       stream.write """
