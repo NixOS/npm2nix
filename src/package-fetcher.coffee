@@ -436,6 +436,8 @@ do ->
       @fetch nm, dep, thisRegistry
     for nm, dep of pkg.dependencies or {}
       handleDep nm, dep
+    for nm, dep of pkg.optionalDependencies or {}
+      handleDep nm, dep
     for nm, dep of pkg.peerDependencies or {}
       handleDep nm, dep
 
