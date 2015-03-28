@@ -152,6 +152,8 @@ do ->
                     https
                   else
                     undefined
+                options = url.parse(resolved)
+                options["rejectUnauthorized"] = false
                 client.get resolved, getCallback
             else
               error "Unsuccessful status code while GETting #{href}: #{http.STATUS_CODES[res.statusCode]}"
@@ -204,7 +206,9 @@ do ->
                   res.pipe computeHash
                   finished() unless hashBuf is null
 
-        client.get href, getCallback
+        options = url.parse href
+        options["rejectUnauthorized"] = false
+        client.get options, getCallback
 do ->
   cache = {}
 
