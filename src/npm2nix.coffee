@@ -34,6 +34,10 @@ parser.addArgument [ '--overwrite' ],
   help: 'Whether to overwrite the helper default.nix expression (when generating for a package.json)',
   action: 'storeTrue',
 
+parser.addArgument [ '--nodev' ],
+  help: 'Do not generate development dependencies',
+  action: 'storeTrue'
+
 args = parser.parseArgs()
 
 escapeNixString = (string) ->
@@ -189,7 +193,7 @@ npmconf.load (err, conf) ->
         process.exit 6
 
       addPackage name, spec for name, spec of packages.dependencies ? {}
-      addPackage name, spec for name, spec of packages.devDependencies ? {}
+      addPackage name, spec for name, spec of packages.devDependencies ? {} if !args.nodev
 
       pkgName = escapeNixString packages.name
       fs.writeFile "default.nix", """
