@@ -144,15 +144,15 @@ do ->
               else unless 'location' of res.headers
                 error "Bad HTTP response while GETting #{href}: Redirect with no Location header"
               else
-                parsed = url.parse res.headers.location
-                client = switch parsed.protocol
+                resolved = url.resolve(href, res.headers.location)
+                client = switch (url.parse resolved).protocol
                   when 'http:'
                     http
                   when 'https:'
                     https
                   else
                     undefined
-                client.get res.headers.location, getCallback
+                client.get resolved, getCallback
             else
               error "Unsuccessful status code while GETting #{href}: #{http.STATUS_CODES[res.statusCode]}"
           else
