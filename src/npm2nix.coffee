@@ -155,17 +155,26 @@ npmconf.load (err, conf) ->
       process.exit 3
 
     packageByVersion = {}
-    pkgCount = 0
-    fetcher.on 'fetching', ->
-      pkgCount += 1
+
+    pendingPackages = []
+
+    checkPendingPackages = () ->
+      console.log "Waiting for #{pendingPackages} to complete ..."
+    checkInterval = setInterval checkPendingPackages, 10000
+
+    fetcher.on 'fetching', (name, spec) ->
+      pendingPackages.push(name)
     fetcher.on 'fetched', (name, spec, pkg) ->
-      pkgCount -= 1
+      pendingPackageIndex = pendingPackages.indexOf(name)
+      console.assert (pendingPackageIndex >= 0), "Package #{name} was fetched multiple times!"
+      pendingPackages.splice(pendingPackageIndex,1)
       packageByVersion[name] ?= {}
       unless pkg.version of packageByVersion[name]
         packageByVersion[name][pkg.version] = pkg
       packageSet[name] ?= {}
       packageSet[name][spec] = packageByVersion[name][pkg.version]
-      if pkgCount is 0
+      if pendingPackages.length == 0
+        clearInterval(checkInterval)
         names = (key for key, val of packageSet).sort()
         for name in names
           specs = (key for key, val of packageSet[name]).sort()
