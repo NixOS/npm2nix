@@ -183,7 +183,7 @@ do ->
               cached.callbacks = []
 
             computeHash.on 'readable', ->
-              hashBuf = computeHash.read 32
+              hashBuf = (computeHash.read 32) || hashBuf
               finished() unless hashBuf is null or pkg is null
 
             tarParser.on 'entry', (entry) =>
