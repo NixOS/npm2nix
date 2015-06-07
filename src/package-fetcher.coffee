@@ -40,7 +40,7 @@ PackageFetcher.prototype.fetch = (name, spec, registry) ->
         @_fetchFromGit name, spec, registry, parsed
       when 'http:', 'https:'
         @_fetchFromHTTP name, spec, registry, parsed
-      else
+      when null
         if semver.validRange spec, true
           @_fetchFromRegistry name, spec, registry
         else
@@ -48,6 +48,9 @@ PackageFetcher.prototype.fetch = (name, spec, registry) ->
             @_fetchFromGithub name, spec, registry
           else
             @emit 'error', "Unknown spec #{spec}", name, spec
+      else
+        @emit 'error', "Unknown protocol #{parsed.protocol}", name, spec
+
 
 PackageFetcher.prototype._fetchFromGithub = (name, spec, registry) ->
   new_spec = "git://github.com/" + spec.replace "#", ".git#"
