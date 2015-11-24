@@ -39,7 +39,7 @@
     }
   ],
   "scripts": {
-    "postinstall": "coffee --bare --compile --output lib src/*.coffee"
+    "prepublish": "coffee --bare --compile --output lib src/*.coffee"
   },
   "engines": {
     "node": ">=0.9.4"
