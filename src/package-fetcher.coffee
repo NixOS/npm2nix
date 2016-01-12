@@ -17,6 +17,7 @@ findit = require 'findit'
 tar = require 'tar'
 semver = require 'semver'
 RegistryClient = require 'npm-registry-client'
+npa = require 'npm-package-arg'
 
 PackageFetcher = (cfg) ->
   unless this instanceof PackageFetcher
@@ -34,28 +35,17 @@ PackageFetcher.prototype.fetch = (name, spec, registry) ->
     @_peerDependencies[name] ?= {}
     @_peerDependencies[name][spec] = []
     @emit 'fetching', name, spec
-    parsed = url.parse spec
-    switch parsed.protocol
-      when 'git:', 'git+ssh:', 'git+http:', 'git+https:'
-        @_fetchFromGit name, spec, registry, parsed
-      when 'http:', 'https:'
-        @_fetchFromHTTP name, spec, registry, parsed
-      when null
-        if semver.validRange spec, true
-          @_fetchFromRegistry name, spec, registry
-        else
-          if spec.indexOf "#" > -1
-            @_fetchFromGithub name, spec, registry
-          else
-            @emit 'error', "Unknown spec #{spec}", name, spec
-      else
-        @emit 'error', "Unknown protocol #{parsed.protocol}", name, spec
-
-
-PackageFetcher.prototype._fetchFromGithub = (name, spec, registry) ->
-  new_spec = "git://github.com/" + spec.replace "#", ".git#"
-  parsed = url.parse new_spec
-  @_fetchFromGit name, spec, registry, parsed
+    parsed = npa("#{name}@#{spec}")
+    if parsed.type is "git"
+      @_fetchFromGit name, spec, registry, spec
+    else if parsed.type is "hosted"
+      @_fetchFromGit name, spec, registry, parsed.hosted.httpsUrl
+    else if parsed.type is "tag" or parsed.type is "version" or parsed.type is "range"
+      @_fetchFromRegistry name, spec, registry, parsed.spec
+    else if parsed.type is "remote"
+      @_fetchFromHTTP name, spec, registry, parsed.spec
+    else
+      @emit 'error', "Unknown protocol #{parsed.type}", name, spec
 
 PackageFetcher.prototype._fetchFromRegistry = (name, spec, registry) ->
   handlePackage = (pkg) =>
@@ -66,7 +56,7 @@ PackageFetcher.prototype._fetchFromRegistry = (name, spec, registry) ->
         @_havePackage name, spec, pkg, registry
         @emit 'fetched', name, spec, pkg
       else
-        @_fetchFromHTTP name, spec, registry, url.parse dist.tarball
+        @_fetchFromHTTP name, spec, registry, dist.tarball
 
   registry.get "https://registry.npmjs.org/#{name}/", {}, (err, info) =>
     if err?
@@ -97,7 +87,8 @@ do ->
     else
       cached.callbacks.push cb
 
-  PackageFetcher.prototype._fetchFromHTTP = (name, spec, registry, parsed) ->
+  PackageFetcher.prototype._fetchFromHTTP = (name, spec, registry, httpUrl) ->
+    parsed = url.parse httpUrl
     href = parsed.href
     callback = (err, pkg) =>
       if err?
@@ -223,7 +214,8 @@ do ->
     else
       cached.callbacks.push cb
 
-  PackageFetcher.prototype._fetchFromGit = (name, spec, registry, parsed) ->
+  PackageFetcher.prototype._fetchFromGit = (name, spec, registry, gitUrl) ->
+    parsed = url.parse gitUrl
     parsed.protocol = switch parsed.protocol
         when 'git:'
           'git:'
