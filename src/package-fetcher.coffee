@@ -68,7 +68,7 @@ PackageFetcher.prototype._fetchFromRegistry = (name, spec, registry) ->
       else
         @_fetchFromHTTP name, spec, registry, url.parse dist.tarball
 
-  registry.get "/#{encodeURIComponent name}", (err, info) =>
+  registry.get "https://registry.npmjs.org/#{name}/", {}, (err, info) =>
     if err?
       @emit 'error', "Error getting registry info for #{name}: #{err}", name, spec
     else
@@ -80,7 +80,7 @@ PackageFetcher.prototype._fetchFromRegistry = (name, spec, registry) ->
         if pkg instanceof Object
           handlePackage pkg
         else
-          registry.get "/#{encodeURIComponent name}/#{version}", (err, info) =>
+          registry.get "https://registry.npmjs.org/#{name}/#{version}/", (err, info) =>
             if err?
               @emit 'error', "Error getting package info for #{name}@#{version}: #{err}", name, spec
             else

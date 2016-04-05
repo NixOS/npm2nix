@@ -14,7 +14,7 @@
   "dependencies": {
     "semver": "~4.2.0",
     "argparse": "0.1.15",
-    "npm-registry-client": "0.2.27",
+    "npm-registry-client": "7.1.0",
     "npmconf": "0.1.1",
     "tar": "0.1.17",
     "temp": "0.6.0",
