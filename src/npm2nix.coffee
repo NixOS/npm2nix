@@ -1,5 +1,6 @@
 fs = require 'fs'
 path = require 'path'
+semver = require 'semver'
 
 argparse = require 'argparse'
 npmconf = require 'npmconf'
@@ -24,6 +25,10 @@ parser.addArgument [ 'packageList' ],
   help: 'The file containing the packages to generate expressions for'
   type: path.resolve
   metavar: 'INPUT'
+
+parser.addArgument [ '--shrinkwrap' ],
+  help: 'shrinkwrap'
+  type: path.resolve
 
 parser.addArgument [ 'output' ],
   help: 'The output file to generate'
@@ -144,18 +149,35 @@ npmconf.load (err, conf) ->
     process.exit 7
   registry = new RegistryClient conf
   fetcher = new PackageFetcher()
-  fs.readFile args.packageList, (err, json) ->
-    if err?
-      console.error "Error reading file #{args.packageList}: #{err}"
-      process.exit 1
-    try
-      packages = JSON.parse json
-    catch error
-      console.error "Error parsing JSON file #{args.packageList}: #{error}"
-      process.exit 3
+
+  readJson = (path, success) ->
+    fs.readFile path, (err, json) ->
+      if err?
+        console.error "Error reading file #{path}: #{err}"
+        process.exit 1
+      try
+        success (JSON.parse json)
+      catch error
+        console.error "Error parsing JSON file #{path}: #{error}"
+        process.exit 3
+
+  shrinkwrapedDeps = {}
+  if args.shrinkwrap
+    readJson args.shrinkwrap, (json) ->
+      shrinkwrapedDeps = json.dependencies
+
+  readJson args.packageList, (json) ->
+
+    packages = json
+
+    for d in ['dependencies', 'devDependencies']
+      for name of packages[d]
+        if semver.validRange packages[d][name] and name in shrinkwrapedDeps
+          packages[d][name] = shrinkwrapedDeps[name].version
+        else
+          packages[d][name] = shrinkwrapedDeps[name].resolved
 
     packageByVersion = {}
-
     pendingPackages = []
 
     checkPendingPackages = () ->
