@@ -12,15 +12,15 @@
   },
   "main": "lib/package-fetcher.js",
   "dependencies": {
-    "semver": "~4.2.0",
     "argparse": "0.1.15",
+    "coffee-script": ">=1.6.2 <2.0.0",
+    "findit": ">=1.1.0 <2.0.0",
+    "fs.extra": ">=1.2.0 <2.0.0",
     "npm-registry-client": "7.1.0",
     "npmconf": "0.1.1",
+    "semver": "~4.2.0",
     "tar": "0.1.17",
-    "temp": "0.6.0",
-    "fs.extra": ">=1.2.0 <2.0.0",
-    "findit": ">=1.1.0 <2.0.0",
-    "coffee-script": ">=1.6.2 <2.0.0"
+    "temp": "0.6.0"
   },
   "devDependencies": {
     "grunt": "^0.4.5",
