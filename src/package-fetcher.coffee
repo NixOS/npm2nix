@@ -310,6 +310,7 @@ do ->
                           if rev?
                             gitRevParse.stdout.removeListener 'readable', readRev
                             gitRevParse.stdout.removeListener 'end', earlyRevEnd
+                            gitRevParse.emit 'parsed'
                             gitRevParse.stdout.on 'data', ->
                             finished() if pkg? and hash?
                         gitRevParse.stdout.on 'readable', readRev
@@ -325,61 +326,63 @@ do ->
                             pkg = JSON.parse data
                             @_havePackage name, spec, pkg, registry
                             finished() if hash? and rev?
-                        finder = findit gitDir
-                        dotGitRegexp = /^\.git.*$/
-                        deletesLeft = 1
-                        deleteFinished = ->
-                          deletesLeft -= 1
-                          finder.emit 'noMoreDeletes' if deletesLeft is 0
-                        finder.on 'directory', (dir, stat, stop) ->
-                          if dotGitRegexp.test path.basename(dir)
-                            stop()
-                            deletesLeft += 1
-                            fs.rmrf dir, (err) ->
-                              if err?
-                                error "Error removing directory #{dir} in #{parsed.format()}##{commitIsh} clone: #{err}"
-                              else
-                                deleteFinished()
-                        finder.on 'file', (file) ->
-                          if dotGitRegexp.test path.basename(file)
-                            deletesLeft += 1
-                            fs.unlink file, (err) ->
-                              if err?
-                                error "Error unlinking file #{file} in #{parsed.format()}##{commitIsh} clone: #{err}"
-                              else
-                                deleteFinished()
-                        finder.on 'link', (link) ->
-                          if dotGitRegexp.test path.basename(link)
-                            deletesLeft += 1
-                            fs.unlink link, (err) ->
-                              if err?
-                                error "Error unlinking symlink #{link} in #{parsed.format()}##{commitIsh} clone: #{err}"
-                              else
-                                deleteFinished()
-                        finder.on 'error', (err) ->
-                          error "Error walking git tree to remove .git* files: #{err}"
-                        finder.on 'end', deleteFinished
-                        finder.once 'noMoreDeletes', ->
-                          nixHash = child_process.spawn "nix-hash", [ "--type", "sha256", gitDir ], stdio: [ 0, 'pipe', 2 ]
-                          nixHash.on 'error', (err) -> error "Error executing nix-hash: #{err}"
-                          nixHash.stdout.setEncoding "utf8"
-                          nixHash.on 'exit', (code, signal) ->
-                            unless code?
-                              error "nix-hash died with signal #{signal}"
-                            else unless code is 0
-                              error "nix-hash exited with non-zero status code #{code}"
-                          readHash = ->
-                            hash = nixHash.stdout.read 64
-                            if hash?
-                              nixHash.stdout.removeListener 'readable', readHash
-                              nixHash.stdout.removeListener 'end', earlyHashEnd
-                              nixHash.stdout.on 'data', ->
-                              finished() if pkg? and rev?
-                          nixHash.stdout.on 'readable', readHash
-                          readHash()
-                          earlyHashEnd = ->
-                            error "nix-hash's stdout ended before 64 characters were read"
-                          nixHash.stdout.on 'end', earlyHashEnd
+
+                        gitRevParse.on 'parsed', =>
+                          finder = findit gitDir
+                          dotGitRegexp = /^\.git.*$/
+                          deletesLeft = 1
+                          deleteFinished = ->
+                            deletesLeft -= 1
+                            finder.emit 'noMoreDeletes' if deletesLeft is 0
+                          finder.on 'directory', (dir, stat, stop) ->
+                            if dotGitRegexp.test path.basename(dir)
+                              stop()
+                              deletesLeft += 1
+                              fs.rmrf dir, (err) ->
+                                if err?
+                                  error "Error removing directory #{dir} in #{parsed.format()}##{commitIsh} clone: #{err}"
+                                else
+                                  deleteFinished()
+                          finder.on 'file', (file) ->
+                            if dotGitRegexp.test path.basename(file)
+                              deletesLeft += 1
+                              fs.unlink file, (err) ->
+                                if err?
+                                  error "Error unlinking file #{file} in #{parsed.format()}##{commitIsh} clone: #{err}"
+                                else
+                                  deleteFinished()
+                          finder.on 'link', (link) ->
+                            if dotGitRegexp.test path.basename(link)
+                              deletesLeft += 1
+                              fs.unlink link, (err) ->
+                                if err?
+                                  error "Error unlinking symlink #{link} in #{parsed.format()}##{commitIsh} clone: #{err}"
+                                else
+                                  deleteFinished()
+                          finder.on 'error', (err) ->
+                            error "Error walking git tree to remove .git* files: #{err}"
+                          finder.on 'end', deleteFinished
+                          finder.once 'noMoreDeletes', ->
+                            nixHash = child_process.spawn "nix-hash", [ "--type", "sha256", gitDir ], stdio: [ 0, 'pipe', 2 ]
+                            nixHash.on 'error', (err) -> error "Error executing nix-hash: #{err}"
+                            nixHash.stdout.setEncoding "utf8"
+                            nixHash.on 'exit', (code, signal) ->
+                              unless code?
+                                error "nix-hash died with signal #{signal}"
+                              else unless code is 0
+                                error "nix-hash exited with non-zero status code #{code}"
+                            readHash = ->
+                              hash = nixHash.stdout.read 64
+                              if hash?
+                                nixHash.stdout.removeListener 'readable', readHash
+                                nixHash.stdout.removeListener 'end', earlyHashEnd
+                                nixHash.stdout.on 'data', ->
+                                finished() if pkg? and rev?
+                            nixHash.stdout.on 'readable', readHash
+                            readHash()
+                            earlyHashEnd = ->
+                              error "nix-hash's stdout ended before 64 characters were read"
+                            nixHash.stdout.on 'end', earlyHashEnd
 
 do ->
   makeNewRegistry = (registry, newUrl) ->
