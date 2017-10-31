@@ -1,3 +1,6 @@
+DISCLAIMER: This project is no longer maintained. Instead use [node2nix](https://github.com/svanderburg/node2nix)
+-----------
+
 npm2nix
 =======
 
