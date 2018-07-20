@@ -9,6 +9,7 @@ in pkgs.stdenv.mkDerivation rec {
   src = ./.;
   buildInputs = with pkgs; [
     nodejs
+    nodePackages.grunt-cli
   ];
   shellHook = ''
     npm install .
