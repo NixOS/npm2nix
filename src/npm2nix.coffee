@@ -43,6 +43,9 @@ args = parser.parseArgs()
 escapeNixString = (string) ->
   string.replace /(\\|\$\{|")/g, "\\$&"
 
+httpsRewrite = (url) ->
+  url.replace /^http:\/\/registry.npmjs.org/g, "https://registry.npmjs.org"
+
 fullNames = {}
 packageSet = {}
 
@@ -74,7 +77,7 @@ do ->
       if 'tarball' of pkg.dist
         stream.write """
         fetchurl {
-              url = "#{pkg.dist.tarball}";
+              url = "#{httpsRewrite pkg.dist.tarball}";
               name = "#{pkg.name}-#{pkg.version}.tgz";
               #{if 'shasum' of pkg.dist then 'sha1' else 'sha256'} = "#{pkg.dist.shasum ? pkg.dist.sha256sum}";
             }
