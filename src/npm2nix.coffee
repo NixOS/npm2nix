@@ -229,9 +229,16 @@ npmconf.load (err, conf) ->
               ("nodePackages.by-spec.\"#{escapeNixString nm}\".\"#{escapeNixString spc}\"" for nm, spc of (packages.dependencies ? {})).join ' '
             } ];
             peerDependencies = [];
+          }""" + (!args.nodev and """;
+          dev = build.override {
+            buildInputs = build.buildInputs ++ [ #{
+              ("nodePackages.by-spec.\"#{escapeNixString nm}\".\"#{escapeNixString spc}\"" for nm, spc of (packages.devDependencies ? {})).join ' '
+            } ];
           };
         }
-        """, flag: "w#{if args.overwrite then '' else 'x'}", (err) ->
+        """ or """;
+        }
+        """), flag: "w#{if args.overwrite then '' else 'x'}", (err) ->
           if err? and err.code isnt 'EEXIST'
             console.error "Error writing helper default.nix: #{err}"
     else
